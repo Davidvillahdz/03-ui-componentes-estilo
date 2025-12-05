@@ -1,0 +1,29 @@
+<div class="join flex justify-center items-center gap-2">
+
+  <button
+    class="join-item btn"
+    [disabled]="activePage() === 1"
+    (click)="previousPage()"
+  >
+    «
+  </button>
+
+  @for (page of getPagesList(); track page) {
+    <button
+      class="join-item btn"
+      [class.btn-primary]="page === activePage()"
+      (click)="goToPage(page)"
+    >
+      {{ page }}
+    </button>
+  }
+
+  <button
+    class="join-item btn"
+    [disabled]="activePage() === pages()"
+    (click)="nextPage()"
+  >
+    »
+  </button>
+
+</div>

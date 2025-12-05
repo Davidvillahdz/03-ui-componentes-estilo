@@ -1,0 +1,212 @@
+<app-breadcrumbs
+[items]="[
+{ label: 'Inicio', link: '/' },
+{ label: 'Simpsons', link: '/simpsons' },
+{ label: 'Personajes' }
+]"
+/>
+
+<section class="p-6">
+<app-hero-simpsons
+[simpsonsCount]="simpsonsResource()?.count ?? 0"
+[totalPages]="totalPages()"
+></app-hero-simpsons>
+
+<section class="p-8">
+<h1 class="text-3xl font-bold mb-2 text-center">The Simpsons API</h1>
+<h2 class="text-lg text-center mb-6">Listado de personajes</h2>
+
+<!-- Spinner de carga -->
+@if (!simpsonsResource()) {
+  <div class="flex justify-center items-center h-64">
+    <span class="loading loading-spinner loading-lg"></span>
+  </div>
+}
+
+<!-- Paginación -->
+@if (simpsonsResource() !== null) {
+  <div class="flex gap-2 items-center h-20 mb-4">
+    <app-pagination-component
+      [pages]="simpsonsResource()?.pages ?? 0"
+      [currentPage]="paginationService.currentPage()"
+    />
+
+    <div class="flex flex-1"></div>
+  </div>
+}
+
+<!-- Tabla de personajes -->
+@if (simpsonsResource()) {
+  <div class="overflow-x-auto shadow-xl rounded-lg bg-base-100">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Ocupación</th>
+          <th>Estado</th>
+          <!-- NUEVA COLUMNA DE FAVORITOS -->
+          <th>Favorito</th>
+          <th></th> <!-- Columna de Ver Detalle -->
+        </tr>
+      </thead>
+      <tbody>
+        @for (personaje of simpsonsResource()?.results ?? []; track personaje.id) {
+          <tr>
+            <td>{{ personaje.id }}</td>
+            <td>{{ personaje.name }}</td>
+            <td>{{ personaje.occupation }}</td>
+            <td>
+              <span class="badge badge-{{ personaje.status === 'Alive' ? 'success' : 'error' }}">
+                {{ personaje.status }}
+              </span>
+            </td>
+            <!-- CELDA DE BOTÓN DE FAVORITO -->
+            <td>
+              @if (isFavorite(personaje.name)) {
+                <button
+                  class="btn btn-sm btn-ghost bg-yellow-200 text-yellow-900 hover:bg-yellow-300"
+                  disabled
+                >
+                  ⭐ En favoritos
+                </button>
+              } @else {
+                <button
+                  class="btn btn-sm btn-primary bg-yellow-500 hover:bg-yellow-600 border-none text-white"
+                  (click)="addToFavorites(personaje)"
+                >
+                  ⭐ Agregar
+                </button>
+              }
+            </td>
+            <td>
+              <a [routerLink]="['/simpsons', personaje.id]" class="btn btn-sm btn-info">
+                Ver Detalle
+              </a>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- SECCIÓN DE FAVORITOS (GESTIÓN Y VISUALIZACIÓN) -->
+<div class="mt-12 p-6 bg-base-200 rounded-xl shadow-2xl">
+  <div class="flex items-center justify-between mb-6 border-b pb-3 border-yellow-300">
+    <h2 class="text-2xl font-bold flex items-center gap-2 text-yellow-800">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 fill-current text-yellow-500" viewBox="0 0 24 24"><path d="M12 17.27l6.18 3.73-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73-1.64 7.03z"/></svg>
+      Mis Favoritos
+    </h2>
+    <button
+      class="btn btn-sm btn-ghost text-yellow-700 hover:bg-yellow-100"
+      (click)="loadingFavorites()"
+      [disabled]="loadingFavorites()"
+    >
+      @if (loadingFavorites()) {
+        <span class="loading loading-spinner loading-sm text-yellow-500"></span>
+      } @else {
+        🔄 Actualizar
+      }
+    </button>
+  </div>
+
+  @if (loadingFavorites()) {
+    <div class="flex justify-center items-center py-12">
+      <span class="loading loading-spinner loading-lg text-yellow-500"></span>
+      <p class="ml-3 text-lg text-gray-600">Cargando favoritos...</p>
+    </div>
+  } @else if (favorites().length === 0) {
+    <div class="alert alert-warning shadow-lg bg-white border-l-4 border-yellow-500">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6 text-yellow-600">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>Aún no tienes personajes favoritos. ¡Agrega algunos haciendo clic en el botón ⭐ Agregar!</span>
+    </div>
+  } @else {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      @for (favorite of favorites(); track favorite.id) {
+        <div class="card bg-white shadow-xl hover:shadow-2xl transition duration-300">
+          <figure class="px-4 pt-4">
+            <img
+              [src]="favorite.image"
+              [alt]="favorite.nombre"
+              class="rounded-xl h-48 w-full object-cover border-2 border-yellow-300"
+              onerror="this.onerror=null; this.src='https://placehold.co/192x192/fde047/333?text=N/A'"
+            />
+          </figure>
+          <div class="card-body p-4">
+            <h3 class="card-title text-base text-yellow-900 truncate" [title]="favorite.nombre">{{ favorite.nombre }}</h3>
+
+            <!-- Modo edición -->
+            @if (editingFavoriteId() === favorite.id) {
+              <form [formGroup]="editForm" class="form-control mt-2">
+                <input
+                  type="text"
+                  formControlName="customName"
+                  class="input input-bordered input-sm bg-yellow-50 border-yellow-300"
+                  [class.input-error]="editForm.get('customName')?.invalid && editForm.get('customName')?.touched"
+                  placeholder="Nombre personalizado"
+                  (keyup.enter)="saveEditedFavorite()"
+                  (keyup.escape)="cancelEditingFavorite()"
+                />
+                @if (editForm.get('customName')?.invalid && editForm.get('customName')?.touched) {
+                  <span class="text-error text-xs mt-1">
+                    @if (editForm.get('customName')?.hasError('required')) {
+                      El nombre es requerido
+                    } @else if (editForm.get('customName')?.hasError('minlength')) {
+                      Mínimo 2 caracteres
+                    }
+                  </span>
+                }
+                <div class="flex gap-2 mt-3">
+                  <button
+                    type="button"
+                    class="btn btn-xs btn-success flex-1"
+                    (click)="saveEditedFavorite()"
+                    [disabled]="editForm.invalid"
+                  >
+                    ✓ Guardar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-xs btn-ghost flex-1"
+                    (click)="cancelEditingFavorite()"
+                  >
+                    ✕ Cancelar
+                  </button>
+                </div>
+              </form>
+            } @else {
+              <!-- Modo visualización -->
+              <p class="text-xs opacity-80 mt-1">
+                <span class="font-bold text-yellow-700">Apodo:</span>
+                <span class="block mt-0.5 text-gray-700">{{ favorite.customName }}</span>
+              </p>
+
+              <div class="card-actions justify-end mt-4">
+                <button
+                  class="btn btn-xs btn-ghost text-yellow-600 hover:text-yellow-800"
+                  (click)="startEditingFavorite(favorite)"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  class="btn btn-xs btn-error bg-red-500 hover:bg-red-600 text-white border-none"
+                  (click)="removeFromFavorites(favorite.id!)"
+                >
+                  🗑️ Eliminar
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+<!-- FIN SECCIÓN FAVORITOS -->
+
+
+</section>
+</section>
