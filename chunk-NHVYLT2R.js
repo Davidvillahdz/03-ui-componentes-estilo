@@ -1,0 +1,1 @@
+import{a}from"./chunk-WIQ4HBQK.js";import"./chunk-PK4J3UXM.js";import"./chunk-IBUA52PN.js";import"./chunk-S32ZPM5K.js";import"./chunk-AXDP3B2M.js";import"./chunk-Q4CSJZBT.js";import"./chunk-B6KJMEWL.js";export{a as SimpsonsPageComponent};
